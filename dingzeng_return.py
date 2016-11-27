@@ -1,11 +1,12 @@
 from index_get import *
-#from dingzeng import *
+#from dingzeng_plot import *
 from WindPy import * 
 from datetime import * 
 import time
 from pandas import* 
 from numpy import *
 from numpy import transpose as t
+import shutil
 w.start()
 
 info_dict={'上证': '000001','深成': '399001','创业板':'399006','中小板':'399005','沪深300':'000300','中证500':'399905'}
@@ -23,6 +24,17 @@ index_data=index_combine[['上证','深成','中小板','创业板','沪深300',
 index_data=index_data.fillna(method='ffill')
 index_data.index=index_combine['日期']+timedelta64(5, 'ms')
 
+def bankuai(x):
+    if x[0:2]=='60':
+        return('上证主板')
+    elif x[0:3]=='000':
+        return('深证主板')
+    elif x[0:3]=='300':
+        return('创业板')
+    elif (x[0:3]=='001')|(x[0:3]=='002'):
+        return('中小板')
+    else:
+        return('error')
 def initial():
     #%run index_get.py
     rawdata1=read_excel('增发实施.xlsx',header=1)
@@ -136,7 +148,7 @@ def dingzeng_info(data,db,table='未解禁'):
     for info in unjiejin_data.to_dict(orient='records'):
         command=gen_return_insert_command(info,table=table)
         db.execute(command,1)
-    print("finished ",data.index)
+    #print("finished ",data.index)
 
 def do_dingzeng_info(data,db,table='未解禁'):
     threads=[]
@@ -153,6 +165,10 @@ def do_dingzeng_info(data,db,table='未解禁'):
 
 if __name__=="__main__":
     base_path=os.getcwd()
+    os.chdir(base_path+'\\stock\\')
+    shutil.rmtree('未解禁')
+    os.mkdir('未解禁')
+    os.chdir(base_path)
     combine_data=initial()
     command='create table if not exists 解禁 (代码 Text,"实际募资总额(亿元)" Real,后复权净值 Real,前复权净值 Real, 上证净值 Real, 深成净值 Real,创业板净值 Real,中小板净值 Real, 沪深300净值 Real, 中证500净值 Real ,primary key(代码,"实际募资总额(亿元)") ) '
     jiejin_db=SQLiteWraper('定增.db',command)
@@ -182,3 +198,5 @@ if __name__=="__main__":
     sql2='select * from 未解禁'
     data=merge(combine_data,read_sql(sql1,con).append(read_sql(sql2,con),ignore_index=True),on=['代码','实际募资总额(亿元)'],how='left')
     data.to_sql('定增汇总',con,if_exists='replace')
+    
+    print('完成定增股解禁(或当前)收益率更新')

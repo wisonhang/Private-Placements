@@ -228,3 +228,18 @@ if __name__=="__main__":
             index_combine=DataFrame(date_range('01/01/2006',datetime.today()),columns=['发行日期'])
         index_combine=merge(index_combine,index_data,on='发行日期',how='outer')
     index_combine=merge(index_combine,shibor,on='发行日期',how='outer').sort_values('发行日期')
+    
+    info_dict={'上证': '000001','深成': '399001','创业板':'399006','中小板':'399005','沪深300':'000300','中证500':'399905'}
+    for i,idx in enumerate(info_dict):
+        code=info_dict[idx]
+        con=sqlite3.connect('index.db')
+        sql='select * from "%s" order by 日期 '%(code)
+        index_data=read_sql(sql,con)[['日期','收盘价']]
+        index_data['日期']=index_data['日期'].apply(lambda x:datetime.strptime(str(x),'%Y%m%d'))
+        index_data.columns=['日期',idx]
+        if i==0:
+            index_combine=DataFrame(date_range('01/01/2006',datetime.today()),columns=['日期'])
+        index_combine=merge(index_combine,index_data,on='日期',how='outer')
+    index_data=index_combine[['上证','深成','中小板','创业板','沪深300','中证500']]
+    index_data=index_data.fillna(method='ffill')
+    index_data.index=index_combine['日期']+timedelta64(5, 'ms')
